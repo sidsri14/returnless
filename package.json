@@ -1,0 +1,23 @@
+{
+  "name": "returnless",
+  "version": "1.0.0",
+  "description": "Privacy-conscious apparel comparison & wardrobe overlap analyzer powered by YouCam API",
+  "type": "module",
+  "main": "src/server.mjs",
+  "scripts": {
+    "test": "node --test",
+    "start": "node src/server.mjs",
+    "dev": "node src/server.mjs"
+  },
+  "keywords": [
+    "youcam",
+    "virtual-try-on",
+    "wardrobe-overlap",
+    "e-commerce",
+    "returns-reduction",
+    "hackathon",
+    "devpost"
+  ],
+  "author": "Siddharth Srivastava",
+  "license": "MIT"
+}

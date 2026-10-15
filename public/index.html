@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ReturnLess — YouCam AI Virtual Try-On & Wardrobe Overlap Analyzer</title>
+  <meta name="description" content="Reject redundant apparel purchases before checkout using YouCam S2S virtual try-on and deterministic local wardrobe overlap evidence.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- Ambient background glow effects -->
+  <div class="ambient-glow glow-cyan"></div>
+  <div class="ambient-glow glow-indigo"></div>
+  <div class="ambient-glow glow-rose"></div>
+
+  <!-- Header & Navigation -->
+  <header class="app-header">
+    <div class="header-inner">
+      <div class="brand-group">
+        <div class="brand-badge">
+          <svg class="brand-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <div class="brand-title-wrap">
+            <span class="brand-name">RETURNLESS</span>
+            <span class="brand-tag">HACKATHON EDITION</span>
+          </div>
+          <span class="brand-subhead">YouCam AI Virtual Try-On &times; Wardrobe Overlap Evidence Engine</span>
+        </div>
+      </div>
+
+      <div class="header-status-panel">
+        <div class="status-pill" id="engineStatusPill">
+          <span class="status-indicator-dot pulsating"></span>
+          <span class="status-pill-label" id="engineStatusLabel">Connecting to YouCam S2S API...</span>
+        </div>
+        <button class="btn btn-secondary btn-sm" id="btnAuditLogToggle">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+            <line x1="16" y1="13" x2="8" y2="13"/>
+            <line x1="16" y1="17" x2="8" y2="17"/>
+            <polyline points="10 9 9 9 8 9"/>
+          </svg>
+          Audit Ledger (<span id="headerAuditCount">0</span>)
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Impact Ticker HUD -->
+  <section class="metrics-ticker-section">
+    <div class="metrics-grid">
+      <div class="metric-card">
+        <span class="metric-label">AVOIDED DUPLICATE SPEND</span>
+        <div class="metric-value-row">
+          <span class="metric-currency">$</span>
+          <span class="metric-number" id="metricAvoidedSpend">0.00</span>
+        </div>
+        <span class="metric-sub">Capital preserved before checkout</span>
+      </div>
+
+      <div class="metric-card">
+        <span class="metric-label">PREVENTED LOGISTICS CO₂e</span>
+        <div class="metric-value-row">
+          <span class="metric-number" id="metricAvoidedCO2">0.0</span>
+          <span class="metric-unit">kg CO₂e</span>
+        </div>
+        <span class="metric-sub">Reverse transport emissions spared</span>
+      </div>
+
+      <div class="metric-card">
+        <span class="metric-label">REDUNDANT PURCHASES REJECTED</span>
+        <div class="metric-value-row">
+          <span class="metric-number" id="metricRejectedCount">0</span>
+          <span class="metric-unit">garments</span>
+        </div>
+        <span class="metric-sub" id="metricRejectionRate">0% of total reviewed</span>
+      </div>
+
+      <div class="metric-card highlight-metric">
+        <span class="metric-label">OVERLAP ENGINE FIDELITY</span>
+        <div class="metric-value-row">
+          <span class="metric-number">CIEDE2000</span>
+        </div>
+        <span class="metric-sub">Perceptual L*a*b* color distance</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- Main Application Container -->
+  <main class="main-container">
+    
+    <!-- Top Configuration Row: Shopper Profile & Candidate Selection -->
+    <div class="workflow-grid-top">
+      
+      <!-- Panel 1: Shopper Model Profile -->
+      <div class="glass-panel profile-panel">
+        <div class="panel-header">
+          <div class="step-badge">1</div>
+          <div class="panel-title-group">
+            <h2 class="panel-title">Shopper Base Model</h2>
+            <span class="panel-caption">Select profile or upload your front-facing reference</span>
+          </div>
+        </div>
+
+        <div class="profile-selector-row" id="profileSelectorRow">
+          <!-- Dynamically populated from fixtures -->
+        </div>
+
+        <div class="shopper-card-preview" id="shopperCardPreview">
+          <div class="shopper-avatar-wrap">
+            <img id="shopperAvatarImg" src="" alt="Shopper Avatar" class="shopper-avatar">
+          </div>
+          <div class="shopper-info">
+            <h3 class="shopper-name" id="shopperName">-</h3>
+            <p class="shopper-desc" id="shopperDesc">-</p>
+            <div class="shopper-meta-tags">
+              <span class="tag-badge">Front-Facing 3:4</span>
+              <span class="tag-badge">Neutral Lighting</span>
+              <span class="tag-badge privacy-tag">Zero Biometrics Stored</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Panel 2: Candidate Garment Under Review -->
+      <div class="glass-panel candidate-panel">
+        <div class="panel-header">
+          <div class="step-badge">2</div>
+          <div class="panel-title-group">
+            <h2 class="panel-title">Candidate Purchase Items</h2>
+            <span class="panel-caption">Select an item currently in your e-commerce cart</span>
+          </div>
+        </div>
+
+        <div class="candidate-cards-grid" id="candidateCardsGrid">
+          <!-- Dynamically populated candidate cards -->
+        </div>
+      </div>
+    </div>
+
+    <!-- Comparative Decision Studio: Try-On vs Wardrobe Overlap -->
+    <div class="studio-layout">
+      
+      <!-- Studio Column 1: YouCam Virtual Try-On Canvas -->
+      <div class="glass-panel tryon-stage-panel">
+        <div class="panel-header">
+          <div class="step-badge">3</div>
+          <div class="panel-title-group">
+            <h2 class="panel-title">YouCam Virtual Try-On Stage</h2>
+            <span class="panel-caption">Generative garment drape fitted directly to your model</span>
+          </div>
+          <div class="tryon-status-tag" id="tryonStatusTag">Ready to Fit</div>
+        </div>
+
+        <div class="tryon-viewer-container">
+          <div class="canvas-wrapper" id="canvasWrapper">
+            <div class="vto-image-box" id="vtoImageBox">
+              <img id="vtoDisplayImg" src="" alt="Try On Render" class="vto-render-img">
+              <div class="vto-overlay-loader hidden" id="vtoOverlayLoader">
+                <div class="spinner-ring"></div>
+                <span class="loader-text" id="loaderText">Invoking YouCam AI S2S pipeline...</span>
+                <span class="loader-sub">Generating drape & drape alignment</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="tryon-controls-bar">
+            <button class="btn btn-primary btn-glow" id="btnExecuteTryOn">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="5 3 19 12 5 21 5 3"/>
+              </svg>
+              Generate YouCam Virtual Try-On
+            </button>
+            <div class="tryon-meta-info" id="tryonMetaInfo">
+              <span>Task ID: <code id="lblTaskId">None</code></span>
+              <span id="lblMode">Simulation Mode</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Studio Column 2: Wardrobe Overlap Evidence & Decision Cockpit -->
+      <div class="glass-panel overlap-cockpit-panel">
+        <div class="panel-header">
+          <div class="step-badge">4</div>
+          <div class="panel-title-group">
+            <h2 class="panel-title">Wardrobe Overlap Evidence</h2>
+            <span class="panel-caption">Deterministic similarity compared to your owned closet</span>
+          </div>
+        </div>
+
+        <!-- Overlap Meter Banner -->
+        <div class="overlap-gauge-card" id="overlapGaugeCard">
+          <div class="gauge-header">
+            <div class="verdict-badge verdict-redundant" id="verdictBadge">
+              <span class="verdict-dot"></span>
+              <span class="verdict-text" id="verdictText">ANALYZING...</span>
+            </div>
+            <div class="score-display">
+              <span class="score-number" id="overlapScoreNumber">0</span>
+              <span class="score-percent">%</span>
+              <span class="score-caption">OVERLAP</span>
+            </div>
+          </div>
+
+          <div class="overlap-bar-track">
+            <div class="overlap-bar-fill" id="overlapBarFill" style="width: 0%;"></div>
+            <div class="threshold-marker marker-borderline" title="50% Borderline Threshold"></div>
+            <div class="threshold-marker marker-redundant" title="75% Redundant Threshold"></div>
+          </div>
+
+          <div class="scale-legends">
+            <span>0% Novel</span>
+            <span>50% Borderline</span>
+            <span>75% High Redundancy</span>
+            <span>100% Duplicate</span>
+          </div>
+
+          <p class="verdict-reasoning" id="verdictReasoning">
+            Select a candidate garment to compute evidence-bound overlap metrics.
+          </p>
+        </div>
+
+        <!-- Closest Owned Garment Direct Comparison -->
+        <div class="closest-garment-section" id="closestGarmentSection">
+          <h4 class="sub-section-title">CLOSEST OWNED GARMENT IN YOUR CLOSET</h4>
+          <div class="closest-comparison-card" id="closestComparisonCard">
+            <div class="closest-img-wrap">
+              <img id="closestImg" src="" alt="Closest Owned Garment" class="closest-thumb">
+            </div>
+            <div class="closest-details">
+              <h5 class="closest-name" id="closestName">Loading...</h5>
+              <div class="closest-metrics-row">
+                <span class="badge-sub" id="closestCategoryBadge">Upper Body</span>
+                <span class="badge-sub" id="closestSimilarityBadge">0% Similarity</span>
+                <span class="badge-sub" id="closestDeltaEBadge">Delta-E: 0.0</span>
+              </div>
+              <div class="color-swatch-comparison">
+                <div class="swatch-item">
+                  <span class="swatch-box" id="swatchCandidate"></span>
+                  <span class="swatch-hex" id="hexCandidate">#000000</span>
+                  <span class="swatch-lbl">Candidate</span>
+                </div>
+                <div class="swatch-vs">VS</div>
+                <div class="swatch-item">
+                  <span class="swatch-box" id="swatchOwned"></span>
+                  <span class="swatch-hex" id="hexOwned">#000000</span>
+                  <span class="swatch-lbl">Owned</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Final Shopper Decision Action Box -->
+        <div class="decision-action-box">
+          <h4 class="sub-section-title">MAKE INFORMED PURCHASE DECISION</h4>
+          <div class="decision-rationale-group">
+            <label for="rationaleSelect" class="input-label">Decision Rationale</label>
+            <select id="rationaleSelect" class="form-select">
+              <option value="Duplicate style and color already owned">Already own equivalent style & color in closet</option>
+              <option value="Fails novelty threshold; impulse purchase">Fails novelty threshold; impulse purchase</option>
+              <option value="Minor shade difference does not justify $ retail cost">Minor shade difference does not justify retail price</option>
+              <option value="Fills a proven wardrobe gap in capsule">Fills a proven wardrobe gap with fresh palette</option>
+              <option value="Custom rationale...">Custom rationale...</option>
+            </select>
+            <input type="text" id="customRationaleInput" class="form-input hidden" placeholder="Explain your decision...">
+          </div>
+
+          <div class="decision-buttons-row">
+            <button class="btn btn-reject btn-lg" id="btnReject">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+              Reject Purchase (Avoid Return)
+            </button>
+            <button class="btn btn-approve btn-lg" id="btnApprove">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <polyline points="20 6 9 17 4 12"></polyline>
+              </svg>
+              Keep & Buy
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Wardrobe Closet Gallery Section -->
+    <section class="closet-gallery-section">
+      <div class="section-title-row">
+        <div>
+          <h2 class="section-heading">Your Registered Wardrobe Closet</h2>
+          <span class="section-subheading">Owned baseline garments indexed for perceptual overlap analysis</span>
+        </div>
+        <span class="badge-count" id="ownedCountBadge">4 Items Registered</span>
+      </div>
+
+      <div class="closet-items-grid" id="closetItemsGrid">
+        <!-- Dynamically rendered owned items -->
+      </div>
+    </section>
+
+    <!-- Slide-over Audit Ledger Modal -->
+    <div class="audit-modal-backdrop hidden" id="auditModalBackdrop">
+      <div class="audit-modal">
+        <div class="modal-header">
+          <div>
+            <h3 class="modal-title">Purchase Decision Audit Ledger</h3>
+            <span class="modal-sub">Tamper-evident record of evaluated garments, overlap scores, and spared capital</span>
+          </div>
+          <button class="modal-close-btn" id="btnCloseAuditModal">&times;</button>
+        </div>
+
+        <div class="modal-body">
+          <div class="modal-stats-row">
+            <div class="modal-stat-box">
+              <span class="stat-box-num" id="modalTotalSpend">$0.00</span>
+              <span class="stat-box-lbl">Total Avoided Spend</span>
+            </div>
+            <div class="modal-stat-box">
+              <span class="stat-box-num" id="modalTotalCO2">0.0 kg</span>
+              <span class="stat-box-lbl">Avoided CO₂e</span>
+            </div>
+            <div class="modal-stat-box">
+              <span class="stat-box-num" id="modalRejected">0</span>
+              <span class="stat-box-lbl">Rejected Duplicates</span>
+            </div>
+            <div class="modal-stat-box">
+              <span class="stat-box-num" id="modalKept">0</span>
+              <span class="stat-box-lbl">Approved Pieces</span>
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table class="audit-table">
+              <thead>
+                <tr>
+                  <th>Decision ID</th>
+                  <th>Garment Name</th>
+                  <th>Overlap</th>
+                  <th>Verdict</th>
+                  <th>Decision</th>
+                  <th>Spared Cost</th>
+                  <th>Rationale</th>
+                  <th>Time</th>
+                </tr>
+              </thead>
+              <tbody id="auditTableBody">
+                <tr>
+                  <td colspan="8" class="empty-table-msg">No decisions recorded yet. Evaluate a garment to populate ledger.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button class="btn btn-secondary" id="btnExportJson">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+              <polyline points="7 10 12 15 17 10"></polyline>
+              <line x1="12" y1="15" x2="12" y2="3"></line>
+            </svg>
+            Export Ledger (JSON)
+          </button>
+          <button class="btn btn-primary" id="btnPrintReceipt">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="6 9 6 2 18 2 18 9"></polyline>
+              <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+              <rect x="6" y="14" width="12" height="8"></rect>
+            </svg>
+            Print Decision Summary
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="app-footer">
+    <div class="footer-inner">
+      <div class="footer-col">
+        <span class="footer-brand">RETURNLESS</span>
+        <p class="footer-desc">
+          Devpost YouCam API Skin AI & eCommerce Virtual Try-On Hackathon Submission.
+          Built by Siddharth Srivastava.
+        </p>
+      </div>
+      <div class="footer-col text-right">
+        <span class="footer-spec">YouCam S2S API v2.0 • CIEDE2000 Delta-E • Zero Biometric Storage</span>
+        <span class="footer-copyright">&copy; 2026 ReturnLess. Open Source under MIT License.</span>
+      </div>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
